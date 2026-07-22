@@ -647,17 +647,17 @@ PioneerDDJ400.stopSamplerBlink = function(channel, control) {
 
 // Pad note to effect config mapping
 // Top row (0x50-0x53): forward beat repeat (slip loop)
-// Bottom row (0x54-0x57): reverse roll
-// When shift is held: gate mode (volume toggle)
+// Bottom row (0x54-0x57): reverse beat repeat (slip + reverse)
+// When shift is held (separate MIDI codes): gate mode (volume toggle)
 PioneerDDJ400.padFx2Config = {
     0x50: { beatSize: 0.0625, mode: "repeat" },  // PAD 1: 1/16
     0x51: { beatSize: 0.125,  mode: "repeat" },  // PAD 2: 1/8
     0x52: { beatSize: 0.25,   mode: "repeat" },  // PAD 3: 1/4
     0x53: { beatSize: 0.5,    mode: "repeat" },  // PAD 4: 1/2
-    0x54: { beatSize: 0.0625, mode: "reverse" }, // PAD 5: 1/16 rev
-    0x55: { beatSize: 0.125,  mode: "reverse" }, // PAD 6: 1/8 rev
-    0x56: { beatSize: 0.25,   mode: "reverse" }, // PAD 7: 1/4 rev
-    0x57: { beatSize: 0.5,    mode: "reverse" }, // PAD 8: 1/2 rev
+    0x54: { beatSize: 0.0625, mode: "revrepeat" }, // PAD 5: 1/16 reverse
+    0x55: { beatSize: 0.125,  mode: "revrepeat" }, // PAD 6: 1/8 reverse
+    0x56: { beatSize: 0.25,   mode: "revrepeat" }, // PAD 7: 1/4 reverse
+    0x57: { beatSize: 0.5,    mode: "revrepeat" }, // PAD 8: 1/2 reverse
 };
 
 // Track active pad per deck (so only one effect at a time)
@@ -687,11 +687,11 @@ PioneerDDJ400.padFx2Deactivate = function(deckIndex, group) {
     var config = PioneerDDJ400.padFx2Config[activeNote];
     if (!config) return;
 
-    if (config.mode === "repeat") {
-        engine.setValue(group, "slip_enabled", 0);
+    if (config.mode === "repeat" || config.mode === "revrepeat") {
+        engine.setValue(group, "reverse", 0);
         engine.setValue(group, "beatloop_activate", 0);
-    } else if (config.mode === "reverse") {
-        engine.setValue(group, "reverseroll", 0);
+        engine.setValue(group, "slip_enabled", 0);
+        engine.setValue(group, "loop_enabled", 0);
     } else if (config.mode === "gate") {
         engine.setValue(group, "volume", 1.0);
         if (PioneerDDJ400.padFx2GateTimers[deckIndex] !== null) {
@@ -743,12 +743,15 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
             engine.setValue(group, "slip_enabled", 1);
             engine.setValue(group, "beatloop_size", config.beatSize);
             engine.setValue(group, "beatloop_activate", 1);
-        } else if (config.mode === "reverse") {
-            // Reverse roll
+        } else if (config.mode === "revrepeat") {
+            // Reverse beat repeat: slip + beatloop + reverse
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
 
-            engine.setValue(group, "reverseroll", 1);
+            engine.setValue(group, "slip_enabled", 1);
+            engine.setValue(group, "beatloop_size", config.beatSize);
+            engine.setValue(group, "reverse", 1);
+            engine.setValue(group, "beatloop_activate", 1);
         }
     } else {
         // Pad released - deactivate effect
