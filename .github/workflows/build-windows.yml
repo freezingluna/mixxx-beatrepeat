@@ -71,6 +71,63 @@ jobs:
         run: cmake --build . --config RelWithDebInfo
         working-directory: build
 
+      - name: "Deploy Qt and copy res/"
+        shell: powershell
+        run: |
+          $buildDir = $null
+          foreach ($d in @("build\Release", "build\RelWithDebInfo", "build")) {
+            if (Test-Path "$d\mixxx.exe") { $buildDir = $d; break }
+          }
+          if (-not $buildDir) { Write-Error "mixxx.exe not found"; exit 1 }
+          Write-Host "Build output: $buildDir"
+
+          if (Test-Path "res") {
+            Copy-Item -Recurse -Force "res" "$buildDir\res"
+            Write-Host "Copied res/"
+          }
+
+          $qtPlugins = $null
+          foreach ($base in @("C:\buildenv", $env:BUILDENV_BASEPATH)) {
+            if (-not (Test-Path $base)) { continue }
+            $found = Get-ChildItem -Path $base -Recurse -Filter "qwindows.dll" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match "platforms" } | Select-Object -First 1
+            if ($found) { $qtPlugins = $found; break }
+          }
+
+          if ($qtPlugins) {
+            $platDir = Join-Path $buildDir "platforms"
+            New-Item -ItemType Directory -Force -Path $platDir | Out-Null
+            Copy-Item $qtPlugins.FullName "$platDir\qwindows.dll"
+            Write-Host "Copied qwindows.dll from $($qtPlugins.FullName)"
+
+            $qtPluginsRoot = (Get-Item $qtPlugins.FullName).Directory.Parent.FullName
+            foreach ($subdir in @("imageformats","styles","iconengines","bearer","generic","networkinformation","platforminputcontexts","position","printsupport","renderplugins","scenegraph","sensors","sqldrivers","texttospeech","virtualkeyboard","xcbglintegrations","egldeviceintegrations")) {
+              $src = Join-Path $qtPluginsRoot $subdir
+              if (Test-Path $src -PathType Container) {
+                $dst = Join-Path $buildDir $subdir
+                Copy-Item -Recurse -Force $src $dst
+                Write-Host "Copied $subdir"
+              }
+            }
+
+            $qtBase = $qtPluginsRoot.Parent.Parent
+            foreach ($subdir in @("qml","translations","resources")) {
+              $src = Join-Path $qtBase $subdir
+              if (Test-Path $src -PathType Container) {
+                $dst = Join-Path $buildDir $subdir
+                Copy-Item -Recurse -Force $src $dst
+                Write-Host "Copied $subdir"
+              }
+            }
+          } else {
+            Write-Host "WARNING: qwindows.dll not found in buildenv"
+          }
+
+          $wdq = Get-ChildItem -Path "C:\buildenv" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($wdq) {
+            Write-Host "Running windeployqt..."
+            & $wdq.FullName "$buildDir\mixxx.exe" 2>&1
+          }
+
       - name: "Zip Mixxx"
         shell: powershell
         run: |
