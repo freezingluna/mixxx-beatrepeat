@@ -109,13 +109,15 @@ jobs:
               }
             }
 
-            $qtBase = $qtPluginsRoot.Parent.Parent
-            foreach ($subdir in @("qml","translations","resources")) {
-              $src = Join-Path $qtBase $subdir
-              if (Test-Path $src -PathType Container) {
-                $dst = Join-Path $buildDir $subdir
-                Copy-Item -Recurse -Force $src $dst
-                Write-Host "Copied $subdir"
+            $qtBase = (Get-Item $qtPluginsRoot).Parent.FullName
+            if ($qtBase) {
+              foreach ($subdir in @("qml","translations","resources")) {
+                $src = Join-Path $qtBase $subdir
+                if (Test-Path $src -PathType Container) {
+                  $dst = Join-Path $buildDir $subdir
+                  Copy-Item -Recurse -Force $src $dst
+                  Write-Host "Copied $subdir"
+                }
               }
             }
           } else {
