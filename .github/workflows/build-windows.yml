@@ -127,7 +127,8 @@ jobs:
           $wdq = Get-ChildItem -Path "C:\buildenv" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($wdq) {
             Write-Host "Running windeployqt..."
-            & $wdq.FullName "$buildDir\mixxx.exe" 2>&1
+            Start-Process -FilePath $wdq.FullName -ArgumentList "$buildDir\mixxx.exe" -Wait -NoNewWindow
+            Write-Host "windeployqt done"
           }
 
       - name: "Zip Mixxx"
