@@ -1,0 +1,86 @@
+name: Build Mixxx Windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-2025-vs2026
+    name: Windows x64 Installer
+
+    steps:
+      - name: "Check out repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "[Windows] Set up MSVC Developer Command Prompt"
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: "[Windows] Get build environment name"
+        shell: cmd
+        run: tools\windows_buildenv.bat name
+
+      - name: "[Windows] Set up build environment"
+        shell: cmd
+        run: tools\windows_buildenv.bat setup
+        env:
+          BUILDENV_BASEPATH: C:\buildenv
+          BUILDENV_RELEASE: TRUE
+
+      - name: "Create build directory"
+        run: mkdir build
+
+      - name: "Configure"
+        shell: cmd
+        run: >-
+          cmake
+          -DBULK=ON
+          -DHSS1394=ON
+          -DLOCALECOMPARE=ON
+          -DMAD=ON
+          -DMEDIAFOUNDATION=ON
+          -DMODPLUG=ON
+          -DQT6=ON
+          -DQML=ON
+          -DWAVPACK=ON
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_PREFIX_PATH="%CMAKE_PREFIX_PATH%"
+          -DWARNINGS_FATAL=OFF
+          -DDEBUG_ASSERTIONS_FATAL=OFF
+          -DBATTERY=ON
+          -DBROADCAST=ON
+          -DDOWNLOAD_MANUAL=ON
+          -DHID=ON
+          -DKEYFINDER=OFF
+          -DLILV=ON
+          -DOPUS=ON
+          -DQTKEYCHAIN=ON
+          -DVINYLCONTROL=ON
+          -DCMAKE_VERBOSE_MAKEFILE=OFF
+          -L
+          ..
+        working-directory: build
+
+      - name: "Build"
+        run: cmake --build . --config RelWithDebInfo
+        working-directory: build
+
+      - name: "Zip Mixxx"
+        shell: powershell
+        run: |
+          cd build
+          $items = Get-ChildItem -Path . -Exclude "CMakeFiles","CMakeCache.txt","*.obj","*.log","buildenv","_deps" | Select-Object -ExpandProperty Name
+          Compress-Archive -Path $items -DestinationPath "Mixxx-BeatRepeat.zip" -Force
+
+      - name: "Upload Mixxx"
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mixxx-BeatRepeat-Windows-x64
+          path: build/Mixxx-BeatRepeat.zip
+          if-no-files-found: error
