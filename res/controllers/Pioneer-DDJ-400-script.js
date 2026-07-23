@@ -851,49 +851,48 @@ PioneerDDJ400.padFx1EffectGroup = function(unit, slot) {
 
 PioneerDDJ400.padFx1ToggleEffect = function(unit, slot, deckIndex, control) {
     var group = PioneerDDJ400.padFx1EffectGroup(unit, slot);
+    var unitGroup = "[EffectRack1_EffectUnit" + unit + "]";
+    var channelGroup = deckIndex === 0 ? "[Channel1]" : "[Channel2]";
     var current = engine.getValue(group, "enabled");
     engine.setValue(group, "enabled", current ? 0 : 1);
     if (!current) {
         engine.setParameter(group, "meta", 1.0);
+        engine.setValue(unitGroup, "group_" + channelGroup + "_enable", 1);
     }
     PioneerDDJ400.padFx1SendLed(deckIndex, control, !current);
 };
 
 PioneerDDJ400.padFx1Pressed = function(_channel, control, value, _status, group) {
-    if (value === 0) return;
     var deckIndex = PioneerDDJ400.padFx1GetDeckIndex(group);
 
-    if (control === 0x10) {
-        if (PioneerDDJ400.padFx1ActiveRoll[deckIndex] !== null) {
-            engine.setValue(group, "beatloop_activate", 0);
-            engine.setValue(group, "slip_enabled", 0);
-            engine.setValue(group, "loop_enabled", 0);
-            PioneerDDJ400.padFx1SendLed(deckIndex, PioneerDDJ400.padFx1ActiveRoll[deckIndex], false);
+    if (control === 0x10 || control === 0x11) {
+        if (value > 0) {
+            if (PioneerDDJ400.padFx1ActiveRoll[deckIndex] !== null) {
+                engine.setValue(group, "beatloop_activate", 0);
+                engine.setValue(group, "slip_enabled", 0);
+                engine.setValue(group, "loop_enabled", 0);
+                PioneerDDJ400.padFx1SendLed(deckIndex, PioneerDDJ400.padFx1ActiveRoll[deckIndex], false);
+            }
+            PioneerDDJ400.padFx1ActiveRoll[deckIndex] = control;
+            PioneerDDJ400.padFx1RollGroup[deckIndex] = group;
+            engine.setValue(group, "slip_enabled", 1);
+            engine.setValue(group, "beatloop_size", control === 0x10 ? 0.5 : 0.25);
+            engine.setValue(group, "beatloop_activate", 1);
+            PioneerDDJ400.padFx1SendLed(deckIndex, control, true);
+        } else {
+            if (PioneerDDJ400.padFx1ActiveRoll[deckIndex] === control) {
+                engine.setValue(group, "beatloop_activate", 0);
+                engine.setValue(group, "slip_enabled", 0);
+                engine.setValue(group, "loop_enabled", 0);
+                PioneerDDJ400.padFx1SendLed(deckIndex, control, false);
+                PioneerDDJ400.padFx1ActiveRoll[deckIndex] = null;
+                PioneerDDJ400.padFx1RollGroup[deckIndex] = null;
+            }
         }
-        PioneerDDJ400.padFx1ActiveRoll[deckIndex] = control;
-        PioneerDDJ400.padFx1RollGroup[deckIndex] = group;
-        engine.setValue(group, "slip_enabled", 1);
-        engine.setValue(group, "beatloop_size", 0.5);
-        engine.setValue(group, "beatloop_activate", 1);
-        PioneerDDJ400.padFx1SendLed(deckIndex, control, true);
         return;
     }
 
-    if (control === 0x11) {
-        if (PioneerDDJ400.padFx1ActiveRoll[deckIndex] !== null) {
-            engine.setValue(group, "beatloop_activate", 0);
-            engine.setValue(group, "slip_enabled", 0);
-            engine.setValue(group, "loop_enabled", 0);
-            PioneerDDJ400.padFx1SendLed(deckIndex, PioneerDDJ400.padFx1ActiveRoll[deckIndex], false);
-        }
-        PioneerDDJ400.padFx1ActiveRoll[deckIndex] = control;
-        PioneerDDJ400.padFx1RollGroup[deckIndex] = group;
-        engine.setValue(group, "slip_enabled", 1);
-        engine.setValue(group, "beatloop_size", 0.25);
-        engine.setValue(group, "beatloop_activate", 1);
-        PioneerDDJ400.padFx1SendLed(deckIndex, control, true);
-        return;
-    }
+    if (value === 0) return;
 
     for (var i = 0; i < PioneerDDJ400.padFx1EffectMap.length; i++) {
         var m = PioneerDDJ400.padFx1EffectMap[i];
@@ -901,18 +900,6 @@ PioneerDDJ400.padFx1Pressed = function(_channel, control, value, _status, group)
             PioneerDDJ400.padFx1ToggleEffect(m.unit, m.slot, deckIndex, control);
             return;
         }
-    }
-};
-
-PioneerDDJ400.padFx1RollRelease = function(group) {
-    var deckIndex = PioneerDDJ400.padFx1GetDeckIndex(group);
-    if (PioneerDDJ400.padFx1ActiveRoll[deckIndex] !== null) {
-        engine.setValue(group, "beatloop_activate", 0);
-        engine.setValue(group, "slip_enabled", 0);
-        engine.setValue(group, "loop_enabled", 0);
-        PioneerDDJ400.padFx1SendLed(deckIndex, PioneerDDJ400.padFx1ActiveRoll[deckIndex], false);
-        PioneerDDJ400.padFx1ActiveRoll[deckIndex] = null;
-        PioneerDDJ400.padFx1RollGroup[deckIndex] = null;
     }
 };
 
