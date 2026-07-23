@@ -805,50 +805,24 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
 };
 
 //
-// PAD FX1 mode - Configurable Effect Pads (2 pages of 4)
+// PAD FX1 mode - Effect Pads controlling EffectUnit1
 //
-// ─────────────────────────────────────────────────────────────────────────────
-//  PAGE 1 (normal pads):  4 effects
-//  PAGE 2 (shift+pads):   4 effects (swap with the page1 ones you don't use)
+// Pads 1-2: Roll effects (beatloop + slip)
+// Pads 3-8: Control the 3 effects loaded in EffectRack1_EffectUnit1
+//           (the same effects controlled by the BeatFX section)
 //
-//  Valid effect names:
-//    "roll_half"      → 1/2 beat slip loop
-//    "roll_quarter"   → 1/4 beat slip loop
-//    "roll_eighth"    → 1/8 beat slip loop
-//    "flanger"        → Flanger effect (EffectRack1_EffectUnit2)
-//    "vinylbrake"     → Vinyl Brake (simulated with rate ramp-down)
-//    "echo_half"      → Echo with 1/2 beat delay
-//    "echo_quarter"   → Echo with 1/4 beat delay
-//    "echo_eighth"    → Echo with 1/8 beat delay
-//    "echo_infinite"  → Echo with high feedback (1/8 beat, for transitions)
-//    "sweep"          → Filter sweep via QuickEffectRack
-//    "flanger2"       → Flanger on EffectUnit3 (second flanger slot)
-//    "reverb"         → Reverb effect (EffectRack1_EffectUnit3)
-//    "phaser"         → Phaser effect (EffectRack1_EffectUnit3)
-//    "bitcrusher"     → BitCrusher effect (EffectRack1_EffectUnit4)
-//    "stutter"        → Stutter effect (EffectRack1_EffectUnit4)
-//    "noise"          → Noise effect (EffectRack1_EffectUnit4)
+//   Pad 3: Toggle Effect 1 on/off
+//   Pad 4: Effect 1 meta knob (full on press, zero on release)
+//   Pad 5: Toggle Effect 2 on/off
+//   Pad 6: Effect 2 meta knob (full on press, zero on release)
+//   Pad 7: Toggle Effect 3 on/off
+//   Pad 8: Effect 3 meta knob (full on press, zero on release)
 //
-//  EDIT the maps below to rearrange pad assignments.
-// ─────────────────────────────────────────────────────────────────────────────
+// To configure which effects are loaded:
+//   Use the BeatFX SELECT knob on the DDJ-400 to cycle effects,
+//   or click on the effect slots in Mixxx's EffectRack UI.
+//
 
-// PAGE 1: Normal pads (no shift)
-PioneerDDJ400.padFx1Page1 = {
-    0x10: "roll_half",      // PAD 1
-    0x11: "roll_quarter",   // PAD 2
-    0x12: "flanger",        // PAD 3
-    0x13: "vinylbrake",     // PAD 4
-};
-
-// PAGE 2: Shift + pads
-PioneerDDJ400.padFx1Page2 = {
-    0x10: "echo_half",      // PAD 1
-    0x11: "echo_quarter",   // PAD 2
-    0x12: "sweep",          // PAD 3
-    0x13: "echo_infinite",  // PAD 4
-};
-
-// Track active pad per deck for PAD FX1
 PioneerDDJ400.padFx1ActivePad = [null, null];
 PioneerDDJ400.padFx1ActiveEffect = [null, null];
 PioneerDDJ400.padFx1BrakeTimers = [null, null];
@@ -868,20 +842,13 @@ PioneerDDJ400.padFx1SendLed = function(deckIndex, note, on) {
     midi.sendShortMsg(ch + 1, note, on ? 0x7F : 0x00);
 };
 
-PioneerDDJ400.padFx1RouteChannel = function(group, enable) {
-    engine.setValue("[EffectRack1_EffectUnit2]", "group_" + group + "_enable", enable ? 1 : 0);
+PioneerDDJ400.padFx1GetEffectGroup = function(effectNum) {
+    return "[EffectRack1_EffectUnit1_Effect" + effectNum + "]";
 };
 
-PioneerDDJ400.padFx1RouteChannel3 = function(group, enable) {
-    engine.setValue("[EffectRack1_EffectUnit3]", "group_" + group + "_enable", enable ? 1 : 0);
-};
-
-PioneerDDJ400.padFx1RouteChannel4 = function(group, enable) {
-    engine.setValue("[EffectRack1_EffectUnit4]", "group_" + group + "_enable", enable ? 1 : 0);
-};
-
-PioneerDDJ400.padFx1ActivateEffect = function(effectName, group, deckIndex) {
-    switch (effectName) {
+PioneerDDJ400.padFx1ActivateEffect = function(padType, group, deckIndex) {
+    switch (padType) {
+    // --- Roll effects ---
     case "roll_half":
         engine.setValue(group, "slip_enabled", 1);
         engine.setValue(group, "beatloop_size", 0.5);
@@ -892,166 +859,53 @@ PioneerDDJ400.padFx1ActivateEffect = function(effectName, group, deckIndex) {
         engine.setValue(group, "beatloop_size", 0.25);
         engine.setValue(group, "beatloop_activate", 1);
         break;
-    case "roll_eighth":
-        engine.setValue(group, "slip_enabled", 1);
-        engine.setValue(group, "beatloop_size", 0.125);
-        engine.setValue(group, "beatloop_activate", 1);
+
+    // --- Effect slot toggles ---
+    case "fx1_toggle":
+        engine.setValue(PioneerDDJ400.padFx1GetEffectGroup(1), "enabled",
+            !engine.getValue(PioneerDDJ400.padFx1GetEffectGroup(1), "enabled"));
         break;
-    case "flanger":
-        PioneerDDJ400.padFx1RouteChannel(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect1]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit2_Effect1]", "enabled", 1);
+    case "fx2_toggle":
+        engine.setValue(PioneerDDJ400.padFx1GetEffectGroup(2), "enabled",
+            !engine.getValue(PioneerDDJ400.padFx1GetEffectGroup(2), "enabled"));
         break;
-    case "vinylbrake":
-        // Simulate vinyl brake: gradually ramp rate down to 0
-        PioneerDDJ400.padFx1BrakeOrigRate[deckIndex] = engine.getValue(group, "rate");
-        var curRate = PioneerDDJ400.padFx1BrakeOrigRate[deckIndex];
-        var brakeStep = 0;
-        var brakeSteps = 20;
-        PioneerDDJ400.padFx1BrakeTimers[deckIndex] = engine.beginTimer(30, function() {
-            brakeStep++;
-            curRate *= 0.88;
-            if (curRate < 0.001 || brakeStep >= brakeSteps) {
-                engine.setValue(group, "rate", 0);
-                engine.stopTimer(PioneerDDJ400.padFx1BrakeTimers[deckIndex]);
-                PioneerDDJ400.padFx1BrakeTimers[deckIndex] = null;
-            } else {
-                engine.setValue(group, "rate", curRate);
-            }
-        });
+    case "fx3_toggle":
+        engine.setValue(PioneerDDJ400.padFx1GetEffectGroup(3), "enabled",
+            !engine.getValue(PioneerDDJ400.padFx1GetEffectGroup(3), "enabled"));
         break;
-    case "echo_half":
-        PioneerDDJ400.padFx1RouteChannel(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.125);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.4);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
+
+    // --- Effect meta knobs (full on press) ---
+    case "fx1_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(1), "meta", 1.0);
         break;
-    case "echo_quarter":
-        PioneerDDJ400.padFx1RouteChannel(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.0625);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.4);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
+    case "fx2_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(2), "meta", 1.0);
         break;
-    case "echo_eighth":
-        PioneerDDJ400.padFx1RouteChannel(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.03125);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.4);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
-        break;
-    case "echo_infinite":
-        PioneerDDJ400.padFx1RouteChannel(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.0625);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.92);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 1.0);
-        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
-        break;
-    case "sweep":
-        engine.setValue(group, "filterHighKill", 0);
-        engine.setValue(group, "filterLowKill", 0);
-        engine.setParameter("[QuickEffectRack1_" + group + "]", "super1", 0.9);
-        break;
-    case "flanger2":
-        PioneerDDJ400.padFx1RouteChannel3(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect1]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit3_Effect1]", "enabled", 1);
-        break;
-    case "reverb":
-        PioneerDDJ400.padFx1RouteChannel3(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect2]", "meta", 0.8);
-        engine.setValue("[EffectRack1_EffectUnit3_Effect2]", "enabled", 1);
-        break;
-    case "phaser":
-        PioneerDDJ400.padFx1RouteChannel3(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect3]", "meta", 0.7);
-        engine.setValue("[EffectRack1_EffectUnit3_Effect3]", "enabled", 1);
-        break;
-    case "bitcrusher":
-        PioneerDDJ400.padFx1RouteChannel4(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect1]", "meta", 0.6);
-        engine.setValue("[EffectRack1_EffectUnit4_Effect1]", "enabled", 1);
-        break;
-    case "stutter":
-        PioneerDDJ400.padFx1RouteChannel4(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect2]", "meta", 0.8);
-        engine.setValue("[EffectRack1_EffectUnit4_Effect2]", "enabled", 1);
-        break;
-    case "noise":
-        PioneerDDJ400.padFx1RouteChannel4(group, true);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect3]", "meta", 0.5);
-        engine.setValue("[EffectRack1_EffectUnit4_Effect3]", "enabled", 1);
+    case "fx3_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(3), "meta", 1.0);
         break;
     }
 };
 
-PioneerDDJ400.padFx1DeactivateEffect = function(effectName, group, deckIndex) {
-    switch (effectName) {
+PioneerDDJ400.padFx1DeactivateEffect = function(padType, group, deckIndex) {
+    switch (padType) {
     case "roll_half":
     case "roll_quarter":
-    case "roll_eighth":
         engine.setValue(group, "beatloop_activate", 0);
         engine.setValue(group, "slip_enabled", 0);
         engine.setValue(group, "loop_enabled", 0);
         break;
-    case "vinylbrake":
-        if (PioneerDDJ400.padFx1BrakeTimers[deckIndex] !== null) {
-            engine.stopTimer(PioneerDDJ400.padFx1BrakeTimers[deckIndex]);
-            PioneerDDJ400.padFx1BrakeTimers[deckIndex] = null;
-        }
-        var origRate = PioneerDDJ400.padFx1BrakeOrigRate[deckIndex];
-        if (origRate !== null) {
-            engine.setValue(group, "rate", origRate);
-            PioneerDDJ400.padFx1BrakeOrigRate[deckIndex] = null;
-        }
+    // Meta knobs: zero on release
+    case "fx1_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(1), "meta", 0);
         break;
-    case "flanger":
-        engine.setValue("[EffectRack1_EffectUnit2_Effect1]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect1]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel(group, false);
+    case "fx2_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(2), "meta", 0);
         break;
-    case "echo_half":
-    case "echo_quarter":
-    case "echo_eighth":
-    case "echo_infinite":
-        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel(group, false);
+    case "fx3_meta":
+        engine.setParameter(PioneerDDJ400.padFx1GetEffectGroup(3), "meta", 0);
         break;
-    case "sweep":
-        engine.setParameter("[QuickEffectRack1_" + group + "]", "super1", 0);
-        break;
-    case "flanger2":
-        engine.setValue("[EffectRack1_EffectUnit3_Effect1]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect1]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel3(group, false);
-        break;
-    case "reverb":
-        engine.setValue("[EffectRack1_EffectUnit3_Effect2]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect2]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel3(group, false);
-        break;
-    case "phaser":
-        engine.setValue("[EffectRack1_EffectUnit3_Effect3]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit3_Effect3]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel3(group, false);
-        break;
-    case "bitcrusher":
-        engine.setValue("[EffectRack1_EffectUnit4_Effect1]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect1]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel4(group, false);
-        break;
-    case "stutter":
-        engine.setValue("[EffectRack1_EffectUnit4_Effect2]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect2]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel4(group, false);
-        break;
-    case "noise":
-        engine.setValue("[EffectRack1_EffectUnit4_Effect3]", "enabled", 0);
-        engine.setParameter("[EffectRack1_EffectUnit4_Effect3]", "meta", 0);
-        PioneerDDJ400.padFx1RouteChannel4(group, false);
-        break;
+    // Toggles: no deactivation needed (state persists)
     }
 };
 
@@ -1073,19 +927,29 @@ PioneerDDJ400.padFx1Pressed = function(_channel, control, value, _status, group)
     var isPress = value > 0;
 
     if (isPress) {
-        // Deactivate any currently active pad on this deck
         PioneerDDJ400.padFx1Deactivate(deckIndex, group);
 
-        // Select page based on shift state
+        // Select pad type based on control byte and shift state
         var isShift = PioneerDDJ400.shiftButtonDown[0] || PioneerDDJ400.shiftButtonDown[1];
-        var page = isShift ? PioneerDDJ400.padFx1Page2 : PioneerDDJ400.padFx1Page1;
-        var effectName = page[control];
-        if (!effectName) return;
+        var padType = null;
+
+        switch (control) {
+        case 0x10: padType = "roll_half"; break;
+        case 0x11: padType = "roll_quarter"; break;
+        case 0x12: padType = "fx1_toggle"; break;
+        case 0x13: padType = "fx1_meta"; break;
+        case 0x14: padType = "fx2_toggle"; break;
+        case 0x15: padType = "fx2_meta"; break;
+        case 0x16: padType = "fx3_toggle"; break;
+        case 0x17: padType = "fx3_meta"; break;
+        }
+
+        if (!padType) return;
 
         PioneerDDJ400.padFx1ActivePad[deckIndex] = control;
-        PioneerDDJ400.padFx1ActiveEffect[deckIndex] = effectName;
+        PioneerDDJ400.padFx1ActiveEffect[deckIndex] = padType;
         PioneerDDJ400.padFx1SendLed(deckIndex, control, true);
-        PioneerDDJ400.padFx1ActivateEffect(effectName, group, deckIndex);
+        PioneerDDJ400.padFx1ActivateEffect(padType, group, deckIndex);
     } else {
         PioneerDDJ400.padFx1Deactivate(deckIndex, group);
     }
