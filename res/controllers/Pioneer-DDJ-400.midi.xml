@@ -2429,6 +2429,330 @@
             </control>
             <!-- PAD FX2 SHIFT+PAD MODE END -->
 
+            <!-- PAD FX1 MODE START -->
+            <control>
+                <description>PAD 1 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x10</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 2 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x11</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 3 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x12</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 4 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x13</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 5 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x14</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 6 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x15</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 7 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x16</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 8 (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x97</status>
+                <midino>0x17</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 1 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x10</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 2 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x11</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 3 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x12</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 4 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x13</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 5 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x14</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 6 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x15</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 7 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x16</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 8 (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x99</status>
+                <midino>0x17</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <!-- PAD FX1 SHIFT+PAD (same handler, shift handled in JS) -->
+            <control>
+                <description>PAD 1 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x10</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 2 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x11</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 3 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x12</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 4 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x13</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 5 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x14</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 6 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x15</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 7 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x16</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 8 +SHIFT (DECK1) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel1]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x98</status>
+                <midino>0x17</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 1 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x10</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 2 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x11</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 3 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x12</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 4 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x13</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 5 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x14</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 6 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x15</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 7 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x16</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <control>
+                <description>PAD 8 +SHIFT (DECK2) PAD FX1 MODE - press - Effect Pad</description>
+                <group>[Channel2]</group>
+                <key>PioneerDDJ400.padFx1Pressed</key>
+                <status>0x9A</status>
+                <midino>0x17</midino>
+                <options>
+                    <Script-Binding/>
+                </options>
+            </control>
+            <!-- PAD FX1 MODE END -->
+
             <!-- PAD Section END -->
         </controls>
         <outputs>

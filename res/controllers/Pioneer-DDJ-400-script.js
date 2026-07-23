@@ -36,8 +36,10 @@
 //                            from a previous position on long press)
 //        * CUE/LOOP CALL - memory & delete (complex and not useful. Hot cues are sufficient)
 //
-//      * Secondary pad modes:
-//        * Pad FX2 (Beat Repeat / Reverse Roll / Gate)
+//  Custom Pad FX modes:
+//      * PAD FX1: Configurable effect pads (roll, flanger, vinyl brake, echo, sweep)
+//                 Effects are editable in padFx1EffectMap at the top of PAD FX1 section.
+//      * PAD FX2: Beat Repeat / Reverse Roll / Gate (toggle with shift+pad)
 
 var PioneerDDJ400 = {};
 
@@ -155,6 +157,20 @@ PioneerDDJ400.toggleLight = function(midiIn, active) {
 
 PioneerDDJ400.init = function() {
     engine.setValue("[EffectRack1_EffectUnit1]", "show_focus", 1);
+
+    // Set up EffectRack1_EffectUnit2 for PAD FX1 effects
+    // Load Flanger into slot1, VinylBrake into slot2, Echo into slot3
+    engine.setValue("[EffectRack1_EffectUnit2]", "show_focus", 0);
+    engine.setValue("[EffectRack1_EffectUnit2]", "mix", 1.0);
+    // Route EffectUnit2 to both channels (will be enabled/disabled per-pad)
+    engine.setValue("[EffectRack1_EffectUnit2]", "group_[Channel1]_enable", 0);
+    engine.setValue("[EffectRack1_EffectUnit2]", "group_[Channel2]_enable", 0);
+    // Ensure effects are loaded (cycle to desired effects)
+    // Effect1 = Flanger (default for slot1 in most Mixxx configs, verify)
+    // Effect2 = VinylBrake, Effect3 = Echo
+    for (var s = 1; s <= 3; s++) {
+        engine.setValue("[EffectRack1_EffectUnit2_Effect" + s + "]", "enabled", 0);
+    }
 
     engine.makeUnbufferedConnection("[Channel1]", "vu_meter", PioneerDDJ400.vuMeterUpdate);
     engine.makeUnbufferedConnection("[Channel2]", "vu_meter", PioneerDDJ400.vuMeterUpdate);
@@ -662,6 +678,7 @@ PioneerDDJ400.padFx2Config = {
 
 // Track active pad per deck (so only one effect at a time)
 PioneerDDJ400.padFx2ActivePad = [null, null]; // index 0 = deck1, 1 = deck2
+PioneerDDJ400.padFx2ActiveMode = [null, null]; // "repeat", "revrepeat", or "gate"
 PioneerDDJ400.padFx2GateTimers = [null, null];
 
 PioneerDDJ400.padFx2GetDeckIndex = function(group) {
@@ -684,15 +701,14 @@ PioneerDDJ400.padFx2Deactivate = function(deckIndex, group) {
     var activeNote = PioneerDDJ400.padFx2ActivePad[deckIndex];
     if (activeNote === null) return;
 
-    var config = PioneerDDJ400.padFx2Config[activeNote];
-    if (!config) return;
+    var mode = PioneerDDJ400.padFx2ActiveMode[deckIndex];
 
-    if (config.mode === "repeat" || config.mode === "revrepeat") {
+    if (mode === "repeat" || mode === "revrepeat") {
         engine.setValue(group, "reverse", 0);
         engine.setValue(group, "beatloop_activate", 0);
         engine.setValue(group, "slip_enabled", 0);
         engine.setValue(group, "loop_enabled", 0);
-    } else if (config.mode === "gate") {
+    } else if (mode === "gate") {
         engine.setValue(group, "volume", 1.0);
         if (PioneerDDJ400.padFx2GateTimers[deckIndex] !== null) {
             engine.stopTimer(PioneerDDJ400.padFx2GateTimers[deckIndex]);
@@ -702,6 +718,7 @@ PioneerDDJ400.padFx2Deactivate = function(deckIndex, group) {
 
     PioneerDDJ400.padFx2SendLed(deckIndex, activeNote, false);
     PioneerDDJ400.padFx2ActivePad[deckIndex] = null;
+    PioneerDDJ400.padFx2ActiveMode[deckIndex] = null;
 };
 
 PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group) {
@@ -720,6 +737,7 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
         if (isShift) {
             // Shift + pad = gate mode: toggle volume at beatSize rate
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
+            PioneerDDJ400.padFx2ActiveMode[deckIndex] = "gate";
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
 
             var beatSize = config.beatSize;
@@ -738,6 +756,7 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
         } else if (config.mode === "repeat") {
             // Forward beat repeat with slip mode
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
+            PioneerDDJ400.padFx2ActiveMode[deckIndex] = "repeat";
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
 
             engine.setValue(group, "slip_enabled", 1);
@@ -746,6 +765,7 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
         } else if (config.mode === "revrepeat") {
             // Reverse beat repeat: slip + beatloop + reverse
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
+            PioneerDDJ400.padFx2ActiveMode[deckIndex] = "revrepeat";
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
 
             engine.setValue(group, "slip_enabled", 1);
@@ -756,6 +776,174 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
     } else {
         // Pad released - deactivate effect
         PioneerDDJ400.padFx2Deactivate(deckIndex, group);
+    }
+};
+
+//
+// PAD FX1 mode - Configurable Effect Pads
+//
+// ─────────────────────────────────────────────────────────────────────────────
+//  EDIT HERE: Change which effect each pad triggers.
+//  Valid effect names:
+//    "roll_half"      → 1/2 beat slip loop
+//    "roll_quarter"   → 1/4 beat slip loop
+//    "flanger"        → Flanger effect (EffectRack1_EffectUnit2_Effect1)
+//    "vinylbrake"     → Vinyl Brake effect (EffectRack1_EffectUnit2_Effect2)
+//    "echo_half"      → Echo with 1/2 beat delay (EffectRack1_EffectUnit2_Effect3)
+//    "echo_quarter"   → Echo with 1/4 beat delay (EffectRack1_EffectUnit2_Effect3)
+//    "sweep"          → Filter sweep via QuickEffectRack
+//    "echo_infinite"  → Echo with high feedback for transitions
+// ─────────────────────────────────────────────────────────────────────────────
+PioneerDDJ400.padFx1EffectMap = {
+    0x10: "roll_half",      // PAD 1
+    0x11: "roll_quarter",   // PAD 2
+    0x12: "flanger",        // PAD 3
+    0x13: "vinylbrake",     // PAD 4
+    0x14: "echo_half",      // PAD 5
+    0x15: "echo_quarter",   // PAD 6
+    0x16: "sweep",          // PAD 7
+    0x17: "echo_infinite",  // PAD 8
+};
+
+// Track active pad per deck for PAD FX1
+PioneerDDJ400.padFx1ActivePad = [null, null]; // index 0 = deck1, 1 = deck2
+PioneerDDJ400.padFx1ActiveEffect = [null, null]; // effect name string
+
+PioneerDDJ400.padFx1GetDeckIndex = function(group) {
+    return group === "[Channel1]" ? 0 : 1;
+};
+
+PioneerDDJ400.padFx1GetMidiChannel = function(deckIndex) {
+    return deckIndex === 0 ? 0x97 : 0x99;
+};
+
+PioneerDDJ400.padFx1GetShiftMidiChannel = function(deckIndex) {
+    return deckIndex === 0 ? 0x98 : 0x9A;
+};
+
+PioneerDDJ400.padFx1SendLed = function(deckIndex, note, on) {
+    var ch = PioneerDDJ400.padFx1GetMidiChannel(deckIndex);
+    midi.sendShortMsg(ch, note, on ? 0x7F : 0x00);
+    midi.sendShortMsg(ch + 1, note, on ? 0x7F : 0x00);
+};
+
+PioneerDDJ400.padFx1RouteChannel = function(group, enable) {
+    engine.setValue("[EffectRack1_EffectUnit2]", "group_" + group + "_enable", enable ? 1 : 0);
+};
+
+PioneerDDJ400.padFx1ActivateEffect = function(effectName, group, deckIndex) {
+    var groupStr = group;
+    switch (effectName) {
+    case "roll_half":
+        engine.setValue(group, "slip_enabled", 1);
+        engine.setValue(group, "beatloop_size", 0.5);
+        engine.setValue(group, "beatloop_activate", 1);
+        break;
+    case "roll_quarter":
+        engine.setValue(group, "slip_enabled", 1);
+        engine.setValue(group, "beatloop_size", 0.25);
+        engine.setValue(group, "beatloop_activate", 1);
+        break;
+    case "flanger":
+        PioneerDDJ400.padFx1RouteChannel(group, true);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect1]", "meta", 0.7);
+        engine.setValue("[EffectRack1_EffectUnit2_Effect1]", "enabled", 1);
+        break;
+    case "vinylbrake":
+        PioneerDDJ400.padFx1RouteChannel(group, true);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect2]", "meta", 1.0);
+        engine.setValue("[EffectRack1_EffectUnit2_Effect2]", "enabled", 1);
+        break;
+    case "echo_half":
+        PioneerDDJ400.padFx1RouteChannel(group, true);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.125);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.4);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0.7);
+        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
+        break;
+    case "echo_quarter":
+        PioneerDDJ400.padFx1RouteChannel(group, true);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.0625);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.4);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0.7);
+        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
+        break;
+    case "echo_infinite":
+        PioneerDDJ400.padFx1RouteChannel(group, true);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter1", 0.125);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "parameter2", 0.92);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 1.0);
+        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 1);
+        break;
+    case "sweep":
+        engine.setValue(group, "filterHighKill", 0);
+        engine.setValue(group, "filterLowKill", 0);
+        engine.setParameter("[QuickEffectRack1_" + group + "]", "super1", 0.9);
+        break;
+    }
+};
+
+PioneerDDJ400.padFx1DeactivateEffect = function(effectName, group, deckIndex) {
+    switch (effectName) {
+    case "roll_half":
+    case "roll_quarter":
+        engine.setValue(group, "beatloop_activate", 0);
+        engine.setValue(group, "slip_enabled", 0);
+        engine.setValue(group, "loop_enabled", 0);
+        break;
+    case "flanger":
+        engine.setValue("[EffectRack1_EffectUnit2_Effect1]", "enabled", 0);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect1]", "meta", 0);
+        PioneerDDJ400.padFx1RouteChannel(group, false);
+        break;
+    case "vinylbrake":
+        engine.setValue("[EffectRack1_EffectUnit2_Effect2]", "enabled", 0);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect2]", "meta", 0);
+        PioneerDDJ400.padFx1RouteChannel(group, false);
+        break;
+    case "echo_half":
+    case "echo_quarter":
+    case "echo_infinite":
+        engine.setValue("[EffectRack1_EffectUnit2_Effect3]", "enabled", 0);
+        engine.setParameter("[EffectRack1_EffectUnit2_Effect3]", "meta", 0);
+        PioneerDDJ400.padFx1RouteChannel(group, false);
+        break;
+    case "sweep":
+        engine.setParameter("[QuickEffectRack1_" + group + "]", "super1", 0);
+        break;
+    }
+};
+
+PioneerDDJ400.padFx1Deactivate = function(deckIndex, group) {
+    var activeNote = PioneerDDJ400.padFx1ActivePad[deckIndex];
+    if (activeNote === null) return;
+
+    var effectName = PioneerDDJ400.padFx1ActiveEffect[deckIndex];
+    if (!effectName) return;
+
+    PioneerDDJ400.padFx1DeactivateEffect(effectName, group, deckIndex);
+    PioneerDDJ400.padFx1SendLed(deckIndex, activeNote, false);
+    PioneerDDJ400.padFx1ActivePad[deckIndex] = null;
+    PioneerDDJ400.padFx1ActiveEffect[deckIndex] = null;
+};
+
+PioneerDDJ400.padFx1Pressed = function(_channel, control, value, _status, group) {
+    var deckIndex = PioneerDDJ400.padFx1GetDeckIndex(group);
+    var isPress = value > 0;
+
+    if (isPress) {
+        // Deactivate any currently active pad on this deck
+        PioneerDDJ400.padFx1Deactivate(deckIndex, group);
+
+        var effectName = PioneerDDJ400.padFx1EffectMap[control];
+        if (!effectName) return;
+
+        PioneerDDJ400.padFx1ActivePad[deckIndex] = control;
+        PioneerDDJ400.padFx1ActiveEffect[deckIndex] = effectName;
+        PioneerDDJ400.padFx1SendLed(deckIndex, control, true);
+        PioneerDDJ400.padFx1ActivateEffect(effectName, group, deckIndex);
+    } else {
+        PioneerDDJ400.padFx1Deactivate(deckIndex, group);
     }
 };
 
@@ -786,6 +974,7 @@ PioneerDDJ400.shutdown = function() {
     for (var d = 0; d < 2; d++) {
         var group = d === 0 ? "[Channel1]" : "[Channel2]";
         PioneerDDJ400.padFx2Deactivate(d, group);
+        PioneerDDJ400.padFx1Deactivate(d, group);
     }
 
     // reset vumeter
@@ -806,6 +995,20 @@ PioneerDDJ400.shutdown = function() {
         midi.sendShortMsg(0x98, 0x00 + i, 0x00);    // Deck 1 pads with SHIFT
         midi.sendShortMsg(0x99, 0x00 + i, 0x00);    // Deck 2 pads
         midi.sendShortMsg(0x9A, 0x00 + i, 0x00);    // Deck 2 pads with SHIFT
+    }
+    // turn off PAD FX1 LEDs (0x10-0x17)
+    for (let i = 0x10; i <= 0x17; ++i) {
+        midi.sendShortMsg(0x97, i, 0x00);
+        midi.sendShortMsg(0x98, i, 0x00);
+        midi.sendShortMsg(0x99, i, 0x00);
+        midi.sendShortMsg(0x9A, i, 0x00);
+    }
+    // turn off PAD FX2 LEDs (0x50-0x57)
+    for (let i = 0x50; i <= 0x57; ++i) {
+        midi.sendShortMsg(0x97, i, 0x00);
+        midi.sendShortMsg(0x98, i, 0x00);
+        midi.sendShortMsg(0x99, i, 0x00);
+        midi.sendShortMsg(0x9A, i, 0x00);
     }
 
     // turn off loop in and out lights
