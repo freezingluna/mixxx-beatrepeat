@@ -752,7 +752,7 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
         var isShift = PioneerDDJ400.shiftButtonDown[0] || PioneerDDJ400.shiftButtonDown[1];
 
         if (isShift) {
-            // Shift + pad = gate mode: toggle volume at beatSize rate (2x speed)
+            // Shift + pad = gate mode: toggle volume at beatSize rate
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
             PioneerDDJ400.padFx2ActiveMode[deckIndex] = "gate";
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
@@ -760,24 +760,14 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
             var beatSize = config.beatSize;
             var bpm = engine.getValue(group, "file_bpm");
             if (bpm <= 0) bpm = 120;
-            var periodMs = (60000 / bpm) * beatSize * 0.5; // 2x faster
+            var periodMs = (60000 / bpm) * beatSize * 0.5;
             var gateOn = true;
-            var rampSteps = 3;
-            var rampStepMs = Math.max(periodMs / (rampSteps * 2), 1);
 
             PioneerDDJ400.padFx2GateTimers[deckIndex] = engine.beginTimer(
                 Math.max(periodMs, 15),
                 function() {
                     gateOn = !gateOn;
-                    var targetVol = gateOn ? 1.0 : 0.0;
-                    var startVol = engine.getValue(group, "volume");
-                    var step = 0;
-                    var rampId = engine.beginTimer(rampStepMs, function() {
-                        step++;
-                        var t = step / rampSteps;
-                        engine.setValue(group, "volume", startVol + (targetVol - startVol) * t);
-                        if (step >= rampSteps) engine.stopTimer(rampId);
-                    });
+                    engine.setValue(group, "volume", gateOn ? 1.0 : 0.0);
                 }
             );
         } else if (config.mode === "repeat") {
