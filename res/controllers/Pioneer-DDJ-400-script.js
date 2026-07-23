@@ -169,7 +169,7 @@ PioneerDDJ400.init = function() {
         engine.setValue("[EffectRack1_EffectUnit2_Effect" + s2 + "]", "enabled", 0);
     }
 
-    // Set up EffectRack1_EffectUnit3 for PAD FX1 page 2 (extra effects)
+    // Set up EffectRack1_EffectUnit3 as Master FX (affects both decks)
     engine.setValue("[EffectRack1_EffectUnit3]", "show_focus", 0);
     engine.setValue("[EffectRack1_EffectUnit3]", "mix", 1.0);
     engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel1]_enable", 0);
@@ -265,13 +265,7 @@ PioneerDDJ400.focusedFxGroup = function() {
 };
 
 PioneerDDJ400.beatFxLevelDepthRotate = function(_channel, _control, value) {
-    if (PioneerDDJ400.shiftButtonDown[0] || PioneerDDJ400.shiftButtonDown[1]) {
-        engine.softTakeoverIgnoreNextValue("[EffectRack1_EffectUnit1]", "mix");
-        engine.setParameter(PioneerDDJ400.focusedFxGroup(), "meta", value / 0x7F);
-    } else {
-        engine.softTakeoverIgnoreNextValue(PioneerDDJ400.focusedFxGroup(), "meta");
-        engine.setParameter("[EffectRack1_EffectUnit1]", "mix", value / 0x7F);
-    }
+    engine.setParameter("[EffectRack1_EffectUnit3]", "meta", value / 0x7F);
 };
 
 PioneerDDJ400.changeFocusedEffectBy = function(numberOfSteps) {
@@ -315,10 +309,16 @@ PioneerDDJ400.beatFxSelectShiftPressed = function(_channel, _control, value) {
 };
 
 PioneerDDJ400.beatFxOnOffPressed = function(_channel, _control, value) {
-    if (value === 0) { return; }
-
-    const toggleEnabled = !engine.getValue(PioneerDDJ400.focusedFxGroup(), "enabled");
-    engine.setValue(PioneerDDJ400.focusedFxGroup(), "enabled", toggleEnabled);
+    var enabled = value > 0 ? 1 : 0;
+    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel1]_enable", enabled);
+    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel2]_enable", enabled);
+    for (var i = 1; i <= 3; i++) {
+        engine.setValue("[EffectRack1_EffectUnit3_Effect" + i + "]", "enabled", enabled);
+    }
+    if (enabled) {
+        engine.setParameter("[EffectRack1_EffectUnit3]", "meta", 1.0);
+    }
+    PioneerDDJ400.toggleLight(PioneerDDJ400.lights.beatFx, enabled > 0);
 };
 
 PioneerDDJ400.beatFxOnOffShiftPressed = function(_channel, _control, value) {
@@ -931,7 +931,7 @@ PioneerDDJ400.shutdown = function() {
             PioneerDDJ400.padFx1ActiveRoll[d] = null;
         }
     }
-    for (var eu = 1; eu <= 2; eu++) {
+    for (var eu = 1; eu <= 3; eu++) {
         for (var es = 1; es <= 3; es++) {
             engine.setValue("[EffectRack1_EffectUnit" + eu + "_Effect" + es + "]", "enabled", 0);
         }
