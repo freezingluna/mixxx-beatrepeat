@@ -727,6 +727,7 @@ PioneerDDJ400.padFx2Deactivate = function(deckIndex, group) {
         engine.setValue(group, "loop_enabled", 0);
     } else if (mode === "gate") {
         engine.setValue(group, "volume", 1.0);
+        engine.setValue(group, "volume", 1.0);
         if (PioneerDDJ400.padFx2GateTimers[deckIndex] !== null) {
             engine.stopTimer(PioneerDDJ400.padFx2GateTimers[deckIndex]);
             PioneerDDJ400.padFx2GateTimers[deckIndex] = null;
@@ -752,7 +753,7 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
         var isShift = PioneerDDJ400.shiftButtonDown[0] || PioneerDDJ400.shiftButtonDown[1];
 
         if (isShift) {
-            // Shift + pad = gate mode: toggle volume at beatSize rate
+            // Shift + pad = gate mode: instant volume toggle
             PioneerDDJ400.padFx2ActivePad[deckIndex] = control;
             PioneerDDJ400.padFx2ActiveMode[deckIndex] = "gate";
             PioneerDDJ400.padFx2SendLed(deckIndex, control, true);
@@ -764,9 +765,10 @@ PioneerDDJ400.padFx2Pressed = function(_channel, control, value, _status, group)
             var gateOn = true;
 
             PioneerDDJ400.padFx2GateTimers[deckIndex] = engine.beginTimer(
-                Math.max(periodMs, 15),
+                Math.max(periodMs, 10),
                 function() {
                     gateOn = !gateOn;
+                    engine.setValue(group, "volume", gateOn ? 1.0 : 0.0);
                     engine.setValue(group, "volume", gateOn ? 1.0 : 0.0);
                 }
             );
