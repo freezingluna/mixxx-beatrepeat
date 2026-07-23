@@ -69,6 +69,8 @@ class ControllerManager : public QObject {
     void slotShutdown();
     /// Calls poll() on all devices that have isPolling() true.
     void slotPollDevices();
+    /// Re-scan for controllers after a delay (USB MIDI retry)
+    void slotRetryScan();
 
   private:
     void updateControllerList();
@@ -100,4 +102,9 @@ class ControllerManager : public QObject {
     QSharedPointer<MappingInfoEnumerator> m_pMainThreadSystemMappingEnumerator;
     /// Accessed only from the ControllerManager thread via slotPollDevices().
     bool m_skipPoll;
+    /// Timer for retrying controller scan if no controllers found initially
+    QTimer m_retryScanTimer;
+    int m_retryScanCount;
+    static const int kMaxRetryScans = 5;
+    static const int kRetryScanIntervalMs = 5000;
 };

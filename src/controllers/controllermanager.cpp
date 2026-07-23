@@ -100,7 +100,8 @@ ControllerManager::ControllerManager(UserSettingsPointer pConfig)
                   std::make_unique<ControllerLearningEventFilter>()),
           m_pollTimer(this),
           m_pThread(std::make_unique<QThread>()),
-          m_skipPoll(false) {
+          m_skipPoll(false),
+          m_retryScanCount(0) {
     qRegisterMetaType<std::shared_ptr<LegacyControllerMapping>>(
             "std::shared_ptr<LegacyControllerMapping>");
 
@@ -113,6 +114,10 @@ ControllerManager::ControllerManager(UserSettingsPointer pConfig)
 
     m_pollTimer.setInterval(kPollInterval.toIntegerMillis());
     connect(&m_pollTimer, &QTimer::timeout, this, &ControllerManager::slotPollDevices);
+
+    m_retryScanTimer.setSingleShot(true);
+    m_retryScanTimer.setInterval(kRetryScanIntervalMs);
+    connect(&m_retryScanTimer, &QTimer::timeout, this, &ControllerManager::slotRetryScan);
 
     m_pThread->setObjectName("ControllerManager");
 
@@ -189,6 +194,7 @@ void ControllerManager::slotInitialize() {
 void ControllerManager::slotShutdown() {
     DEBUG_ASSERT_THIS_QOBJECT_THREAD_AFFINITY();
     stopPolling();
+    m_retryScanTimer.stop();
 
     // Clear m_enumerators before deleting the enumerators to prevent other code
     // paths from accessing them during teardown.
@@ -333,6 +339,133 @@ void ControllerManager::slotSetUpDevices() {
     }
 
     pollIfAnyControllersOpen();
+
+    // If no controllers are open after setup, schedule a retry scan.
+    // This handles cases where USB MIDI devices (like DDJ-400) weren't ready
+    // when the initial scan happened.
+    bool anyOpen = false;
+    for (Controller* pController : std::as_const(m_controllers)) {
+        if (pController->isOpen()) {
+            anyOpen = true;
+            break;
+        }
+    }
+
+    // Also check if there are configured but missing controllers
+    bool hasConfiguredControllers = false;
+    if (!anyOpen) {
+        const QList<Controller*> allDevices = getControllerList(false, true);
+        for (Controller* pController : allDevices) {
+            QString deviceName = sanitizeDeviceName(pController->getName());
+            if (m_pConfig->getValue(ConfigKey("[Controller]", deviceName), 0)) {
+                hasConfiguredControllers = true;
+                break;
+            }
+        }
+    }
+
+    if (!anyOpen && hasConfiguredControllers && m_retryScanCount < kMaxRetryScans) {
+        qDebug() << "No controllers opened but configured controllers expected."
+                 << "Scheduling retry scan" << (m_retryScanCount + 1)
+                 << "of" << kMaxRetryScans
+                 << "in" << kRetryScanIntervalMs << "ms";
+        m_retryScanTimer.start();
+    }
+}
+
+void ControllerManager::slotRetryScan() {
+    DEBUG_ASSERT_THIS_QOBJECT_THREAD_AFFINITY();
+
+    m_retryScanCount++;
+    qDebug() << "Retry scan" << m_retryScanCount << "of" << kMaxRetryScans;
+
+    // Re-initialize PortMIDI to refresh the device list
+    // Destroy and recreate the PortMidiEnumerator
+    {
+        auto locker = lockMutex(&m_mutex);
+        m_enumerators.clear();
+#ifdef __PORTMIDI__
+        m_enumerators.push_back(std::make_unique<PortMidiEnumerator>(m_pConfig));
+#endif
+#ifdef __HSS1394__
+        m_enumerators.push_back(std::make_unique<Hss1394Enumerator>());
+#endif
+#ifdef __BULK__
+        m_enumerators.push_back(std::make_unique<BulkEnumerator>());
+#endif
+#ifdef __HID__
+        m_enumerators.push_back(std::make_unique<HidEnumerator>());
+#endif
+    }
+
+    updateControllerList();
+    const QList<Controller*> deviceList = getControllerList(false, true);
+    QStringList mappingPaths(getMappingPaths(m_pConfig));
+
+    bool foundNewController = false;
+
+    for (Controller* pController : deviceList) {
+        if (pController->isOpen()) {
+            continue; // Already set up
+        }
+
+        QString name = pController->getName();
+        QString deviceName = sanitizeDeviceName(name);
+
+        // Check if device is enabled
+        if (!m_pConfig->getValue(ConfigKey("[Controller]", deviceName), 0)) {
+            continue;
+        }
+
+        // Check if device has a configured mapping
+        QString mappingFilePath = getConfiguredMappingFileForDevice(deviceName);
+        if (mappingFilePath.isEmpty()) {
+            continue;
+        }
+
+        qDebug() << "Retry: Searching for controller mapping" << mappingFilePath;
+        QFileInfo mappingFile = findMappingFile(mappingFilePath, mappingPaths);
+        if (!mappingFile.exists()) {
+            qDebug() << "Retry: Could not find" << mappingFilePath;
+            continue;
+        }
+
+        std::shared_ptr<LegacyControllerMapping> pMapping =
+                LegacyControllerMappingFileHandler::loadMapping(
+                        mappingFile, resourceMappingsPath(m_pConfig));
+
+        if (!pMapping) {
+            continue;
+        }
+        pMapping->loadSettings(m_pConfig, pController->getName());
+        pController->setMapping(std::move(pMapping));
+
+        if (CmdlineArgs::Instance().getSafeMode()) {
+            continue;
+        }
+
+        qDebug() << "Retry: Opening controller:" << name;
+        int value = pController->open(m_pConfig->getResourcePath());
+        if (value == 0) {
+            foundNewController = true;
+            qDebug() << "Retry: Successfully opened" << name;
+        } else {
+            qWarning() << "Retry: There was a problem opening" << name;
+        }
+    }
+
+    pollIfAnyControllersOpen();
+
+    // If still no controllers open and we haven't exceeded retries, try again
+    if (!foundNewController && m_retryScanCount < kMaxRetryScans) {
+        qDebug() << "No new controllers found. Scheduling another retry...";
+        m_retryScanTimer.start();
+    } else if (foundNewController) {
+        qDebug() << "Retry scan found and opened controllers successfully!";
+    } else {
+        qWarning() << "All" << kMaxRetryScans << "retry scans exhausted."
+                   << "Controller may not be connected or drivers may not be installed.";
+    }
 }
 
 void ControllerManager::pollIfAnyControllersOpen() {
