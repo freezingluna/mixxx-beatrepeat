@@ -265,7 +265,7 @@ PioneerDDJ400.focusedFxGroup = function() {
 };
 
 PioneerDDJ400.beatFxLevelDepthRotate = function(_channel, _control, value) {
-    engine.setParameter("[EffectRack1_EffectUnit3]", "meta", value / 0x7F);
+    engine.setParameter("[EffectRack1_EffectUnit3]", "mix", value / 0x7F);
 };
 
 PioneerDDJ400.changeFocusedEffectBy = function(numberOfSteps) {
@@ -309,16 +309,18 @@ PioneerDDJ400.beatFxSelectShiftPressed = function(_channel, _control, value) {
 };
 
 PioneerDDJ400.beatFxOnOffPressed = function(_channel, _control, value) {
-    var enabled = value > 0 ? 1 : 0;
-    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel1]_enable", enabled);
-    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel2]_enable", enabled);
+    if (value === 0) return;
+    var current = engine.getValue("[EffectRack1_EffectUnit3]", "group_[Channel1]_enable");
+    var newState = current ? 0 : 1;
+    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel1]_enable", newState);
+    engine.setValue("[EffectRack1_EffectUnit3]", "group_[Channel2]_enable", newState);
     for (var i = 1; i <= 3; i++) {
-        engine.setValue("[EffectRack1_EffectUnit3_Effect" + i + "]", "enabled", enabled);
+        engine.setValue("[EffectRack1_EffectUnit3_Effect" + i + "]", "enabled", newState);
     }
-    if (enabled) {
-        engine.setParameter("[EffectRack1_EffectUnit3]", "meta", 1.0);
+    if (newState) {
+        engine.setParameter("[EffectRack1_EffectUnit3]", "mix", 1.0);
     }
-    PioneerDDJ400.toggleLight(PioneerDDJ400.lights.beatFx, enabled > 0);
+    PioneerDDJ400.toggleLight(PioneerDDJ400.lights.beatFx, newState > 0);
 };
 
 PioneerDDJ400.beatFxOnOffShiftPressed = function(_channel, _control, value) {
